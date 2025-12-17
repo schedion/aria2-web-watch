@@ -9,3 +9,5 @@ RUN apk add --no-cache \
     unzip \
     ca-certificates \
     tzdata
+
+ENTRYPOINT ["/entrypoint.sh"]
