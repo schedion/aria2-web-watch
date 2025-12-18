@@ -17,7 +17,7 @@ docker build -t aria2-web-watch .
 ```
 
 - Pass `--build-arg ARIANG_VERSION=<tag>` to pin AriaNg to a specific release instead of `latest`.
-- The base image is hosted at `dhi.io/nginx:stable-alpine`; run `docker login dhi.io` (or configure CI credentials) before building so Docker can pull it.
+- The base image is hosted at `dhi.io/nginx:1.28-alpine3.21`; run `docker login dhi.io` (or configure CI credentials) before building so Docker can pull it.
 
 ## Running
 
