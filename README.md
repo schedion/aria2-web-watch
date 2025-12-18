@@ -34,6 +34,7 @@ docker run -p 80:80 -p 6800:6800 \
 - Publishing port `6800` is optional unless you need direct RPC access from outside the container.
 - Mount `/data` to persist downloads and `/watch` for `.torrent` drops (override via `DOWNLOAD_DIR` and `WATCH_DIR`).
 - The entrypoint copies `/etc/aria2/aria2.conf.template` into `ARIA2_CONF` before appending runtime values like the RPC secret, download path, and session file.
+- The `/jsonrpc` proxy is disabled by default; set `ENABLE_RPC_PROXY=true` if you want nginx to expose aria2’s JSON-RPC endpoint (required for the bundled AriaNg to work without further reconfiguration).
 
 ### Docker Compose
 
@@ -44,7 +45,8 @@ docker compose up -d
 ```
 
 - Update `RPC_SECRET`, choose UID/GID values that match your host, and create the `./data` and `./watch` directories referenced by the bind mounts.
-- Uncomment `build: .` inside the YAML if you want Compose to build straight from the repo rather than pull `aria2-web-watch:latest`.
+- The sample Compose file pulls the published image `schedion/aria2-web-watch:latest`; uncomment `build: .` if you need to test local changes instead.
+- Set `ENABLE_RPC_PROXY=true` (as shown) when you want AriaNg to reach aria2 via `/jsonrpc`; leave it unset/false to keep the proxy disabled.
 - Bind mount your own `aria2.conf` to `/etc/aria2/aria2.conf.template` to inject additional aria2 defaults before the entrypoint appends runtime options.
 
 ### Environment variables
@@ -58,6 +60,7 @@ docker compose up -d
 | `ARIA2_CONF` | `/etc/aria2/aria2.conf` | Effective aria2 configuration file written at container start. |
 | `ARIA2_TEMPLATE` | `/etc/aria2/aria2.conf.template` | Template copied into `ARIA2_CONF` before runtime overrides. Mount your own to set defaults. |
 | `ARIA2_SESSION` | `/var/lib/aria2/aria2.session` | Session file used by aria2 to resume downloads. Mount it to persist across container restarts. |
+| `ENABLE_RPC_PROXY` | `false` | When `true`, nginx proxies `/jsonrpc` to aria2 so AriaNg (or other clients) can use the same origin. Leave `false` to avoid exposing the RPC API via nginx. |
 | `ARIANG_VERSION` (build arg) | `latest` | GitHub release tag fetched during `docker build`. |
 
 Mount or override the directories referenced above to keep state outside the container. The entrypoint creates missing directories and session files before starting services.

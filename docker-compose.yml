@@ -2,8 +2,8 @@ version: "3.8"
 
 services:
   aria2-web-watch:
-    image: aria2-web-watch:latest
-    # Uncomment build to build locally instead of pulling a published tag.
+    image: schedion/aria2-web-watch:latest
+    # Uncomment build to build locally instead of pulling the published tag.
     # build: .
     container_name: aria2-web-watch
     restart: unless-stopped
@@ -14,6 +14,7 @@ services:
       RPC_SECRET: "changeme"
       PUID: "1000"
       PGID: "1000"
+      ENABLE_RPC_PROXY: "true"
       # DOWNLOAD_DIR: "/data"
       # WATCH_DIR: "/watch"
       # ARIA2_TEMPLATE: "/etc/aria2/aria2.conf.template"

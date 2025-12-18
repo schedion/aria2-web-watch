@@ -29,6 +29,7 @@ The image fetches the latest AriaNg release by default. Pass `--build-arg ARIANG
 - aria2 files: `ARIA2_CONF`, `ARIA2_TEMPLATE`, and `ARIA2_SESSION` can be pointed at custom locations to inject configuration or preserve sessions.
 - Authentication: Set `RPC_SECRET` so AriaNg can securely talk to aria2 through the `/jsonrpc` proxy.
 - User mapping: `PUID`/`PGID` determine ownership for the watch/download directories via `s6-setuidgid`.
+- Control whether nginx proxies aria2 via `/jsonrpc` with `ENABLE_RPC_PROXY` (default `false`). When disabled, AriaNg must be pointed directly at `http://<host>:6800/jsonrpc`.
 
 ## Testing expectations
 
