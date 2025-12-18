@@ -21,6 +21,9 @@ services:
       # WATCH_DIR: "/watch"
       # ARIA2_TEMPLATE: "/etc/aria2/aria2.conf.template"
     volumes:
-      - ./data:/data
-      - ./watch:/watch
-      - ./aria2.conf:/etc/aria2/aria2.conf.template:ro
+      - aria2-config:/config
+      # Uncomment to inject a custom template:
+      # - ./aria2.conf:/config/aria2.conf.template:ro
+
+volumes:
+  aria2-config:
