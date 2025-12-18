@@ -36,7 +36,7 @@ The image fetches the latest AriaNg release by default. Pass `--build-arg ARIANG
 - AriaNg stores RPC preferences in browser storage. To get back to the auto-connect defaults, open AriaNg → Settings → AriaNg → Reset AriaNg Settings (or clear the `AriaNg.*` local-storage keys) and reload the page so the auto-config script can repopulate them with the current RPC secret.
 - BitTorrent controls: `BT_LISTEN_PORT` (default `6881`) and `PEER_ID_PREFIX` (default `A2`) are appended to `aria2.conf`. Adjust `ARIA2_LOG_LEVEL` if you need more/less verbosity from aria2’s stdout logs.
 - Watch behavior: hidden files/directories inside `/watch` are excluded by default via `WATCH_EXCLUDE_REGEX` (`(^|/)\.`). Override if you need different filtering.
-- Ownership adjustments: running as root will `chown -R` the download, watch, and session directories unless `SKIP_DIR_OWNERSHIP=true`—useful when host-managed paths refuse ownership changes.
+- Ownership adjustments: by default (`SKIP_DIR_OWNERSHIP=true`) the entrypoint leaves `/data`, `/watch`, and session dirs alone. Set `SKIP_DIR_OWNERSHIP=false` if you mount host paths and need them chowned to `PUID:PGID`.
 
 ## Testing expectations
 

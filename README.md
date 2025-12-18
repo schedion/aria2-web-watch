@@ -109,7 +109,7 @@ docker compose up -d
 | `RPC_SECRET_FILE` | `$SECRETS_DIR/rpc-secret` | File containing the persisted RPC secret. |
 | `FORCE_RANDOM_RPC_SECRET` | `false` | When `true`, `RPC_SECRET` is regenerated each start and stored. Leave `false` to reuse the persisted secret or respect `RPC_SECRET`. |
 | `FORCE_RANDOM_WEBUI_PASSWORD` | `false` | When `true`, the Basic Auth password is regenerated each start and stored. |
-| `SKIP_DIR_OWNERSHIP` | `false` | Set to `true` to skip recursive `chown` on `/data`, `/watch`, and the session directory when host mounts forbid ownership changes. |
+| `SKIP_DIR_OWNERSHIP` | `true` | Set to `false` only if you want the entrypoint to `chown -R` `/data`, `/watch`, and the session directory (useful when binding host paths). Leaves permissions untouched by default. |
 | `ARIA2_LOG_LEVEL` | `notice` | Controls aria2’s `--log-level` / `--console-log-level` (e.g., `warn`, `info`, `debug`). |
 | `ENABLE_ARIANG_AUTOCONFIG` | `true` | Injects `/ariang-autoconfig.js`, which seeds AriaNg’s localStorage with sane defaults (auto-connecting to `/jsonrpc`) if no settings are stored yet. Turn off if you intend to supply your own UI build or prefer manual setup. |
 | `ARIANG_VERSION` (build arg) | `latest` | GitHub release tag fetched during `docker build`. |
