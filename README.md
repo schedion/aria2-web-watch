@@ -76,7 +76,7 @@ Mount or override the directories referenced above to keep state outside the con
 
 #### AriaNg auto-config & reset
 
-- When `ENABLE_ARIANG_AUTOCONFIG=true`, the entrypoint injects an inline config block (exposing runtime data like the generated RPC secret) followed by `/ariang-autoconfig.js`. The script runs before AriaNg initializes and seeds `localStorage['AriaNg.Options']` only if no settings exist, pointing the UI at `/jsonrpc` on the same host/port.
+- When `ENABLE_ARIANG_AUTOCONFIG=true`, the entrypoint injects an inline config block (exposing runtime data like the generated RPC secret) followed by `/ariang-autoconfig.js`. The script runs before AriaNg initializes and creates or updates `localStorage['AriaNg.Options']`, ensuring the host/port/protocol and base64-encoded secret point to `/jsonrpc` on the same origin.
 - If you prefer to manage settings yourself (or ship a custom AriaNg build), set `ENABLE_ARIANG_AUTOCONFIG=false`; the script is removed and the UI will prompt you for RPC details.
 - AriaNg stores its preferences in your browser. To return to the auto-connect defaults later, open AriaNg → Settings → AriaNg → **Reset AriaNg Settings** (or clear the `AriaNg.*` entries from localStorage) and reload the page so `/ariang-autoconfig.js` can repopulate them.
 

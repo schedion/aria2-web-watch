@@ -2,65 +2,100 @@
   'use strict';
 
   try {
-    if (!window.localStorage) {
+    var storage = window.localStorage;
+    if (!storage) {
       return;
     }
 
     var STORAGE_KEY = 'AriaNg.Options';
-    var existing = window.localStorage.getItem(STORAGE_KEY);
-    if (existing) {
-      return;
+    var config = window.__ARIA2_WEB_WATCH__ || {};
+    var rawOptions = storage.getItem(STORAGE_KEY);
+    var options = {};
+
+    if (rawOptions) {
+      try {
+        options = JSON.parse(rawOptions) || {};
+      } catch (e) {
+        console.warn('[aria2-web-watch] invalid existing AriaNg settings, recreating defaults', e);
+        options = {};
+      }
     }
 
-    var defaults = window.__ARIA2_WEB_WATCH__ || {};
+    var changed = false;
+    var ensureValue = function (key, value) {
+      if (typeof value === 'undefined' || value === null) {
+        return;
+      }
+
+      if (options[key] !== value) {
+        options[key] = value;
+        changed = true;
+      }
+    };
+    var ensureDefault = function (key, value) {
+      if (typeof options[key] === 'undefined') {
+        options[key] = value;
+        changed = true;
+      }
+    };
     var locationObject = window.location || document.location || {};
-    var protocol = defaults.protocol || (locationObject.protocol === 'https:' ? 'https' : 'http');
-    var port = defaults.rpcPort || locationObject.port;
+    var protocol = config.protocol || (locationObject.protocol === 'https:' ? 'https' : 'http');
+    var host = config.rpcHost || locationObject.hostname || 'localhost';
+    var port = config.rpcPort || locationObject.port;
 
     if (!port || port.length === 0) {
       port = protocol === 'https' ? '443' : '80';
     }
 
-    var options = {
-      language: defaults.language || 'en',
-      theme: defaults.theme || 'light',
-      title: defaults.title || '${downspeed}, ${upspeed} - ${title}',
-      titleRefreshInterval: defaults.titleRefreshInterval || 5000,
-      browserNotification: !!defaults.browserNotification,
-      browserNotificationSound: defaults.browserNotificationSound !== false,
-      browserNotificationFrequency: defaults.browserNotificationFrequency || 'unlimited',
-      rpcAlias: defaults.rpcAlias || '',
-      rpcHost: defaults.rpcHost || locationObject.hostname || 'localhost',
-      rpcPort: port,
-      rpcInterface: defaults.rpcInterface || 'jsonrpc',
-      protocol: protocol,
-      httpMethod: defaults.httpMethod || 'POST',
-      rpcRequestHeaders: defaults.rpcRequestHeaders || '',
-      secret: defaults.rpcSecret ? window.btoa(defaults.rpcSecret) : '',
-      extendRpcServers: defaults.extendRpcServers || [],
-      webSocketReconnectInterval: defaults.webSocketReconnectInterval || 5000,
-      globalStatRefreshInterval: defaults.globalStatRefreshInterval || 1000,
-      downloadTaskRefreshInterval: defaults.downloadTaskRefreshInterval || 1000,
-      keyboardShortcuts: defaults.keyboardShortcuts !== false,
-      swipeGesture: defaults.swipeGesture !== false,
-      dragAndDropTasks: defaults.dragAndDropTasks !== false,
-      rpcListDisplayOrder: defaults.rpcListDisplayOrder || 'recentlyUsed',
-      afterCreatingNewTask: defaults.afterCreatingNewTask || 'task-list',
-      removeOldTaskAfterRetrying: !!defaults.removeOldTaskAfterRetrying,
-      confirmTaskRemoval: defaults.confirmTaskRemoval !== false,
-      includePrefixWhenCopyingFromTaskDetails: defaults.includePrefixWhenCopyingFromTaskDetails !== false,
-      showPiecesInfoInTaskDetailPage: defaults.showPiecesInfoInTaskDetailPage || 'le10240',
-      afterRetryingTask: defaults.afterRetryingTask || 'task-list-downloading',
-      taskListIndependentDisplayOrder: !!defaults.taskListIndependentDisplayOrder,
-      displayOrder: defaults.displayOrder || 'default:asc',
-      waitingTaskListPageDisplayOrder: defaults.waitingTaskListPageDisplayOrder || 'default:asc',
-      stoppedTaskListPageDisplayOrder: defaults.stoppedTaskListPageDisplayOrder || 'default:asc',
-      fileListDisplayOrder: defaults.fileListDisplayOrder || 'default:asc',
-      peerListDisplayOrder: defaults.peerListDisplayOrder || 'default:asc'
-    };
+    ensureDefault('language', 'en');
+    ensureDefault('theme', 'light');
+    ensureDefault('title', '${downspeed}, ${upspeed} - ${title}');
+    ensureDefault('titleRefreshInterval', 5000);
+    ensureDefault('browserNotification', false);
+    ensureDefault('browserNotificationSound', true);
+    ensureDefault('browserNotificationFrequency', 'unlimited');
+    ensureDefault('rpcAlias', '');
+    ensureDefault('extendRpcServers', []);
+    ensureDefault('webSocketReconnectInterval', 5000);
+    ensureDefault('globalStatRefreshInterval', 1000);
+    ensureDefault('downloadTaskRefreshInterval', 1000);
+    ensureDefault('keyboardShortcuts', true);
+    ensureDefault('swipeGesture', true);
+    ensureDefault('dragAndDropTasks', true);
+    ensureDefault('rpcListDisplayOrder', 'recentlyUsed');
+    ensureDefault('afterCreatingNewTask', 'task-list');
+    ensureDefault('removeOldTaskAfterRetrying', false);
+    ensureDefault('confirmTaskRemoval', true);
+    ensureDefault('includePrefixWhenCopyingFromTaskDetails', true);
+    ensureDefault('showPiecesInfoInTaskDetailPage', 'le10240');
+    ensureDefault('afterRetryingTask', 'task-list-downloading');
+    ensureDefault('taskListIndependentDisplayOrder', false);
+    ensureDefault('displayOrder', 'default:asc');
+    ensureDefault('waitingTaskListPageDisplayOrder', 'default:asc');
+    ensureDefault('stoppedTaskListPageDisplayOrder', 'default:asc');
+    ensureDefault('fileListDisplayOrder', 'default:asc');
+    ensureDefault('peerListDisplayOrder', 'default:asc');
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(options));
-    console.log('[aria2-web-watch] Initialized AriaNg defaults for ' + options.rpcHost + ':' + options.rpcPort);
+    ensureValue('rpcHost', host);
+    ensureValue('rpcPort', port);
+    ensureValue('rpcInterface', config.rpcInterface || 'jsonrpc');
+    ensureValue('protocol', protocol);
+    ensureValue('httpMethod', config.httpMethod || 'POST');
+
+    var secret = config.rpcSecret || '';
+    if (secret) {
+      var encodedSecret = secret;
+      var base64Pattern = /^[A-Za-z0-9+/]+={0,2}$/;
+      if (!(secret.length % 4 === 0 && base64Pattern.test(secret))) {
+        encodedSecret = window.btoa(secret);
+      }
+      ensureValue('secret', encodedSecret);
+    }
+
+    if (changed) {
+      storage.setItem(STORAGE_KEY, JSON.stringify(options));
+      console.log('[aria2-web-watch] Applied AriaNg defaults for ' + host + ':' + port);
+    }
   } catch (err) {
     console.warn('[aria2-web-watch] Failed to initialize AriaNg defaults', err);
   }
