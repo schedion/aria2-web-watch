@@ -21,6 +21,8 @@ docker run -p 80:80 -p 6800:6800 \
   aria2-web-watch
 ```
 
+Authenticate to the `dhi.io` registry beforehand (`docker login dhi.io`) so the base image `dhi.io/nginx:stable-alpine` is pullable during the build.
+
 The image fetches the latest AriaNg release by default. Pass `--build-arg ARIANG_VERSION=<tag>` during `docker build` to pin a version.
 
 ## Configuration basics
