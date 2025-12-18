@@ -15,6 +15,8 @@ services:
       PUID: "1000"
       PGID: "1000"
       ENABLE_RPC_PROXY: "true"
+      WEBUI_USER: "aria2"
+      WEBUI_PASSWORD: "changeme"
       # DOWNLOAD_DIR: "/data"
       # WATCH_DIR: "/watch"
       # ARIA2_TEMPLATE: "/etc/aria2/aria2.conf.template"

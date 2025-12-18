@@ -8,12 +8,33 @@ DOWNLOAD_DIR="${DOWNLOAD_DIR:-/data}"
 WATCH_DIR="${WATCH_DIR:-/watch}"
 PUID="${PUID:-1000}"
 PGID="${PGID:-1000}"
-ENABLE_RPC_PROXY="${ENABLE_RPC_PROXY:-false}"
+ENABLE_RPC_PROXY="${ENABLE_RPC_PROXY:-true}"
 NGINX_JSONRPC_SNIPPET="${NGINX_JSONRPC_SNIPPET:-/etc/nginx/snippets/jsonrpc.conf}"
-export ARIA2_CONF ARIA2_TEMPLATE ARIA2_SESSION DOWNLOAD_DIR WATCH_DIR RPC_SECRET PUID PGID ENABLE_RPC_PROXY NGINX_JSONRPC_SNIPPET
+ENABLE_ARIANG_AUTOCONFIG="${ENABLE_ARIANG_AUTOCONFIG:-true}"
+ARIANG_INDEX_HTML="${ARIANG_INDEX_HTML:-/usr/share/nginx/html/index.html}"
+WEBUI_USER="${WEBUI_USER:-aria2}"
+WEBUI_PASSWORD="${WEBUI_PASSWORD:-}"
+WEBUI_HTPASSWD="${WEBUI_HTPASSWD:-/etc/nginx/.htpasswd}"
+export ARIA2_CONF ARIA2_TEMPLATE ARIA2_SESSION DOWNLOAD_DIR WATCH_DIR RPC_SECRET PUID PGID ENABLE_RPC_PROXY NGINX_JSONRPC_SNIPPET ENABLE_ARIANG_AUTOCONFIG ARIANG_INDEX_HTML WEBUI_USER WEBUI_PASSWORD WEBUI_HTPASSWD
 
-mkdir -p "$(dirname "$ARIA2_CONF")" "$(dirname "$ARIA2_SESSION")" "$DOWNLOAD_DIR" "$WATCH_DIR" /run/nginx "$(dirname "$NGINX_JSONRPC_SNIPPET")"
+generate_secret() {
+  tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32
+}
+
+if [ -z "$RPC_SECRET" ]; then
+  RPC_SECRET="$(generate_secret)"
+  export RPC_SECRET
+  echo "[entrypoint] Generated random RPC_SECRET: $RPC_SECRET"
+fi
+
+if [ -z "$WEBUI_PASSWORD" ]; then
+  WEBUI_PASSWORD="$(generate_secret)"
+  echo "[entrypoint] Generated random WEBUI password for user $WEBUI_USER: $WEBUI_PASSWORD"
+fi
+
+mkdir -p "$(dirname "$ARIA2_CONF")" "$(dirname "$ARIA2_SESSION")" "$DOWNLOAD_DIR" "$WATCH_DIR" /run/nginx "$(dirname "$NGINX_JSONRPC_SNIPPET")" "$(dirname "$WEBUI_HTPASSWD")"
 touch "$ARIA2_SESSION"
+htpasswd -bB -c "$WEBUI_HTPASSWD" "$WEBUI_USER" "$WEBUI_PASSWORD"
 
 # Ensure user/group exist for setuidgid usage
 GROUP_NAME="aria2group"
@@ -41,10 +62,8 @@ else
   echo "# aria2 configuration" > "$ARIA2_CONF"
 fi
 
-# Allow overriding RPC secret via environment variable
-if [ -n "$RPC_SECRET" ]; then
-  echo "rpc-secret=${RPC_SECRET}" >> "$ARIA2_CONF"
-fi
+# Always enforce RPC authentication
+echo "rpc-secret=${RPC_SECRET}" >> "$ARIA2_CONF"
 
 echo "dir=${DOWNLOAD_DIR}" >> "$ARIA2_CONF"
 echo "input-file=${ARIA2_SESSION}" >> "$ARIA2_CONF"
@@ -63,6 +82,59 @@ location = /jsonrpc {
 EOF
 else
   echo "# JSON-RPC proxy disabled" > "$NGINX_JSONRPC_SNIPPET"
+fi
+
+# Seed AriaNg localStorage defaults if requested so the UI auto-connects.
+if [ "$ENABLE_ARIANG_AUTOCONFIG" = "true" ] || [ "$ENABLE_ARIANG_AUTOCONFIG" = "1" ]; then
+  if [ -f "$ARIANG_INDEX_HTML" ]; then
+    python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+import re
+
+index_path = Path(os.environ["ARIANG_INDEX_HTML"])
+start_tag = "<!-- aria2-web-watch:autoconfig -->"
+end_tag = "<!-- /aria2-web-watch:autoconfig -->"
+config = {
+    "rpcSecret": os.environ.get("RPC_SECRET", ""),
+    "rpcInterface": "jsonrpc",
+    "rpcPath": "/jsonrpc",
+}
+block = (
+    f"{start_tag}\n"
+    f"<script>window.__ARIA2_WEB_WATCH__ = {json.dumps(config)};</script>\n"
+    f"<script src=\"/ariang-autoconfig.js\"></script>\n"
+    f"{end_tag}\n"
+)
+content = index_path.read_text()
+pattern = re.compile(f"{re.escape(start_tag)}.*?{re.escape(end_tag)}\\n?", re.DOTALL)
+if pattern.search(content):
+    content = pattern.sub(block, content, count=1)
+else:
+    if "</body>" in content:
+        content = content.replace("</body>", block + "</body>", 1)
+    else:
+        content += "\n" + block
+index_path.write_text(content)
+PY
+  fi
+else
+  if [ -f "$ARIANG_INDEX_HTML" ]; then
+    python3 - <<'PY'
+import os
+from pathlib import Path
+import re
+
+index_path = Path(os.environ["ARIANG_INDEX_HTML"])
+start_tag = "<!-- aria2-web-watch:autoconfig -->"
+end_tag = "<!-- /aria2-web-watch:autoconfig -->"
+content = index_path.read_text()
+pattern = re.compile(f"{re.escape(start_tag)}.*?{re.escape(end_tag)}\\n?", re.DOTALL)
+content = pattern.sub("", content, count=1)
+index_path.write_text(content)
+PY
+  fi
 fi
 
 # Start aria2 in the background (daemon mode) under the requested UID/GID

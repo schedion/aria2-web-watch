@@ -11,7 +11,8 @@ RUN apk add --no-cache \
     tzdata \
     s6 \
     python3 \
-    py3-pip
+    py3-pip \
+    apache2-utils
 
 # Install aria2p inside a dedicated virtual environment to avoid conflicts with
 # the system-managed Python installation on Alpine.
@@ -33,6 +34,9 @@ RUN set -eux; \
     curl -fsSL "https://github.com/mayswind/AriaNg/releases/download/${VERSION}/AriaNg-${VERSION}.zip" -o /tmp/ariang.zip; \
     unzip /tmp/ariang.zip -d /usr/share/nginx/html; \
     rm /tmp/ariang.zip
+
+# Provide auto-configuration helper for AriaNg
+COPY ariang-autoconfig.js /usr/share/nginx/html/ariang-autoconfig.js
 
 # Copy configuration
 COPY nginx.conf /etc/nginx/nginx.conf

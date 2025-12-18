@@ -27,9 +27,12 @@ The image fetches the latest AriaNg release by default. Pass `--build-arg ARIANG
 
 - Runtime directories: `/data` for downloads, `/watch` for torrents (override via `DOWNLOAD_DIR` / `WATCH_DIR`).
 - aria2 files: `ARIA2_CONF`, `ARIA2_TEMPLATE`, and `ARIA2_SESSION` can be pointed at custom locations to inject configuration or preserve sessions.
-- Authentication: Set `RPC_SECRET` so AriaNg can securely talk to aria2 through the `/jsonrpc` proxy.
+- Authentication: Set `RPC_SECRET` so AriaNg can securely talk to aria2 through the `/jsonrpc` proxy. If left empty, the entrypoint generates one, logs it, and shares it with the AriaNg auto-config script.
 - User mapping: `PUID`/`PGID` determine ownership for the watch/download directories via `s6-setuidgid`.
-- Control whether nginx proxies aria2 via `/jsonrpc` with `ENABLE_RPC_PROXY` (default `false`). When disabled, AriaNg must be pointed directly at `http://<host>:6800/jsonrpc`.
+- Control whether nginx proxies aria2 via `/jsonrpc` with `ENABLE_RPC_PROXY` (default `true`). Set it to `false` only if you never want nginx to expose the RPC endpoint.
+- Basic Auth around the web UI uses `WEBUI_USER`/`WEBUI_PASSWORD` (default user `aria2`, password auto-generated and logged). Credentials are written to `WEBUI_HTPASSWD` (default `/etc/nginx/.htpasswd`).
+- Auto-seeding of AriaNg’s browser storage is handled by `/usr/share/nginx/html/ariang-autoconfig.js`, which is injected when `ENABLE_ARIANG_AUTOCONFIG=true`. Turning it off removes the `<script>` block from `index.html`.
+- AriaNg stores RPC preferences in browser storage. To get back to the auto-connect defaults, open AriaNg → Settings → AriaNg → Reset AriaNg Settings (or clear the `AriaNg.*` local-storage keys) and reload the page so the auto-config script can repopulate them with the current RPC secret.
 
 ## Testing expectations
 
