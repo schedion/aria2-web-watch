@@ -35,6 +35,8 @@ The image fetches the latest AriaNg release by default. Pass `--build-arg ARIANG
 - Auto-seeding of AriaNg’s browser storage is handled by `/usr/share/nginx/html/ariang-autoconfig.js`, which is injected when `ENABLE_ARIANG_AUTOCONFIG=true`. The script creates or updates `AriaNg.Options` (including the base64-encoded secret) so the UI points back to `/jsonrpc`. Turning it off removes the `<script>` block from `index.html`.
 - AriaNg stores RPC preferences in browser storage. To get back to the auto-connect defaults, open AriaNg → Settings → AriaNg → Reset AriaNg Settings (or clear the `AriaNg.*` local-storage keys) and reload the page so the auto-config script can repopulate them with the current RPC secret.
 - BitTorrent controls: `BT_LISTEN_PORT` (default `6881`) and `PEER_ID_PREFIX` (default `A2`) are appended to `aria2.conf`. Adjust `ARIA2_LOG_LEVEL` if you need more/less verbosity from aria2’s stdout logs.
+- Watch behavior: hidden files/directories inside `/watch` are excluded by default via `WATCH_EXCLUDE_REGEX` (`(^|/)\.`). Override if you need different filtering.
+- Ownership adjustments: running as root will `chown -R` the download, watch, and session directories unless `SKIP_DIR_OWNERSHIP=true`—useful when host-managed paths refuse ownership changes.
 
 ## Testing expectations
 

@@ -41,22 +41,50 @@ docker run -p 80:80 -p 6800:6800 \
 - On first boot the container generates an `RPC_SECRET` and Basic Auth password (or uses values you provide), stores them under `/config`, and reuses them on future starts. Set `FORCE_RANDOM_RPC_SECRET=true` or `FORCE_RANDOM_WEBUI_PASSWORD=true` if you need one-off rotations.
 - Capture the generated credentials from container logs (`docker logs <container>`) if you rely on the defaults; otherwise, set explicit `RPC_SECRET` and `WEBUI_PASSWORD` values for deterministic deployments.
 - Customize BitTorrent behavior via `BT_LISTEN_PORT` (default `6881`) and `PEER_ID_PREFIX` (default `A2`), and adjust log verbosity with `ARIA2_LOG_LEVEL`. aria2 logs stream to Docker logs because the process writes directly to stdout.
+- Hidden files and directories inside `/watch` are ignored by default (`WATCH_EXCLUDE_REGEX`), avoiding Syncthing metadata and similar helper folders.
 - Mount `/config` (or override `SECRETS_DIR`) if you want those credentials to persist outside the container filesystem.
 
 ### Docker Compose
 
-Use `docker-compose.yml` as a starting point:
+Use `docker-compose.yml` as a starting point, customizing environment variables to taste:
+
+```yaml
+services:
+  aria2-web-watch:
+    image: schedion/aria2-web-watch:latest
+    # build: .  # Uncomment to build locally
+    environment:
+      RPC_SECRET: "changeme"          # optional; generated & stored if omitted
+      WEBUI_USER: "aria2"
+      WEBUI_PASSWORD: "changeme"      # optional; generated & stored if omitted
+      PUID: "1000"
+      PGID: "1000"
+      ENABLE_RPC_PROXY: "true"
+      ENABLE_ARIANG_AUTOCONFIG: "true"
+      BT_LISTEN_PORT: "6881"
+      PEER_ID_PREFIX: "A2"
+      ARIA2_LOG_LEVEL: "notice"
+      WATCH_EXCLUDE_REGEX: "(^|/)\\."
+      SKIP_DIR_OWNERSHIP: "false"
+      # DOWNLOAD_DIR: "/data"
+      # WATCH_DIR: "/watch"
+      # SECRETS_DIR: "/config"
+      # RPC_SECRET_FILE: "/config/rpc-secret"
+      # WEBUI_PASSWORD_FILE: "/config/webui-password"
+    ports:
+      - "80:80"
+      - "6800:6800"
+    volumes:
+      - aria2-config:/config
+      # - ./aria2.conf:/config/aria2.conf.template:ro
+
+volumes:
+  aria2-config:
+```
 
 ```sh
 docker compose up -d
 ```
-
-- Update `RPC_SECRET`, choose UID/GID values that match your host, and create the `./data` and `./watch` directories referenced by the bind mounts.
-- The sample Compose file pulls the published image `schedion/aria2-web-watch:latest`; uncomment `build: .` if you need to test local changes instead.
-- Set `ENABLE_RPC_PROXY=true` (as shown) when you want AriaNg to reach aria2 via `/jsonrpc`; leave it unset/false to keep the proxy disabled.
-- Provide `WEBUI_USER`/`WEBUI_PASSWORD` if you don’t want a random Basic Auth password each time.
-- Mount `./config:/config` (as shown) so the RPC secret and Basic Auth password persist across container restarts.
-- Bind mount your own `aria2.conf` to `/etc/aria2/aria2.conf.template` to inject additional aria2 defaults before the entrypoint appends runtime options.
 
 ### Environment variables
 
@@ -66,6 +94,7 @@ docker compose up -d
 | `PUID` / `PGID` | `1000` | UID and GID assigned to the runtime user; used to chown download/watch directories when starting as root. |
 | `DOWNLOAD_DIR` | `/data` | Directory aria2 writes finished files into; bind mount for persistence. |
 | `WATCH_DIR` | `/watch` | Directory watched for `.torrent` files; new files are queued via `aria2p`. |
+| `WATCH_EXCLUDE_REGEX` | `(^|/)\.` | Regex passed to `inotifywait --exclude` to skip files/directories (defaults to all hidden entries). |
 | `ARIA2_CONF` | `/config/aria2.conf` | Effective aria2 configuration file written at container start (stored in `/config`). |
 | `ARIA2_TEMPLATE` | `/config/aria2.conf.template` | Template copied into `ARIA2_CONF` before runtime overrides. If missing, the built-in template populates this path on first boot. |
 | `ARIA2_SESSION` | `/config/aria2.session` | Session file used by aria2 to resume downloads. Lives under `/config` by default. |
@@ -80,6 +109,7 @@ docker compose up -d
 | `RPC_SECRET_FILE` | `$SECRETS_DIR/rpc-secret` | File containing the persisted RPC secret. |
 | `FORCE_RANDOM_RPC_SECRET` | `false` | When `true`, `RPC_SECRET` is regenerated each start and stored. Leave `false` to reuse the persisted secret or respect `RPC_SECRET`. |
 | `FORCE_RANDOM_WEBUI_PASSWORD` | `false` | When `true`, the Basic Auth password is regenerated each start and stored. |
+| `SKIP_DIR_OWNERSHIP` | `false` | Set to `true` to skip recursive `chown` on `/data`, `/watch`, and the session directory when host mounts forbid ownership changes. |
 | `ARIA2_LOG_LEVEL` | `notice` | Controls aria2’s `--log-level` / `--console-log-level` (e.g., `warn`, `info`, `debug`). |
 | `ENABLE_ARIANG_AUTOCONFIG` | `true` | Injects `/ariang-autoconfig.js`, which seeds AriaNg’s localStorage with sane defaults (auto-connecting to `/jsonrpc`) if no settings are stored yet. Turn off if you intend to supply your own UI build or prefer manual setup. |
 | `ARIANG_VERSION` (build arg) | `latest` | GitHub release tag fetched during `docker build`. |

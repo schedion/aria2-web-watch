@@ -24,6 +24,8 @@ RPC_SECRET_FILE="${RPC_SECRET_FILE:-$SECRETS_DIR/rpc-secret}"
 WEBUI_PASSWORD_FILE="${WEBUI_PASSWORD_FILE:-$SECRETS_DIR/webui-password}"
 FORCE_RANDOM_RPC_SECRET="${FORCE_RANDOM_RPC_SECRET:-false}"
 FORCE_RANDOM_WEBUI_PASSWORD="${FORCE_RANDOM_WEBUI_PASSWORD:-false}"
+WATCH_EXCLUDE_REGEX="${WATCH_EXCLUDE_REGEX:-(^|/)\\.}"
+SKIP_DIR_OWNERSHIP="${SKIP_DIR_OWNERSHIP:-false}"
 export ARIA2_CONF ARIA2_TEMPLATE ARIA2_SESSION DOWNLOAD_DIR WATCH_DIR RPC_SECRET PUID PGID ENABLE_RPC_PROXY NGINX_JSONRPC_SNIPPET ENABLE_ARIANG_AUTOCONFIG ARIANG_INDEX_HTML WEBUI_USER WEBUI_PASSWORD WEBUI_HTPASSWD BT_LISTEN_PORT PEER_ID_PREFIX ARIA2_LOG_LEVEL SECRETS_DIR RPC_SECRET_FILE WEBUI_PASSWORD_FILE FORCE_RANDOM_RPC_SECRET FORCE_RANDOM_WEBUI_PASSWORD
 
 generate_secret() {
@@ -98,8 +100,14 @@ else
   USER_NAME="$(getent passwd "$PUID" | cut -d: -f1)"
 fi
 
-if [ "$(id -u)" = "0" ]; then
-  chown -R "$PUID:$PGID" "$DOWNLOAD_DIR" "$WATCH_DIR" "$(dirname "$ARIA2_SESSION")"
+if [ "$(id -u)" = "0" ] && [ "$SKIP_DIR_OWNERSHIP" != "true" ] && [ "$SKIP_DIR_OWNERSHIP" != "1" ]; then
+  for dir in "$DOWNLOAD_DIR" "$WATCH_DIR" "$(dirname "$ARIA2_SESSION")"; do
+    if ! chown -R "$PUID:$PGID" "$dir" 2>/dev/null; then
+      echo "[entrypoint] Warning: chown of $dir failed (check host mount permissions or set SKIP_DIR_OWNERSHIP=true)"
+    fi
+  done
+elif [ "$SKIP_DIR_OWNERSHIP" = "true" ] || [ "$SKIP_DIR_OWNERSHIP" = "1" ]; then
+  echo "[entrypoint] Skipping ownership adjustments for DOWNLOAD_DIR/WATCH_DIR (SKIP_DIR_OWNERSHIP=true)"
 fi
 
 if [ ! -f "$ARIA2_TEMPLATE" ] && [ -f /etc/aria2/aria2.conf.template ]; then
@@ -202,7 +210,7 @@ s6-setuidgid "$USER_NAME" aria2c \
 
 # Start watcher to add new .torrent files placed in WATCH_DIR via aria2 RPC
 s6-setuidgid "$USER_NAME" sh -c '
-  inotifywait -m -e create -e moved_to --format "%w%f" "$WATCH_DIR" |
+  inotifywait -m -e create -e moved_to --exclude "$WATCH_EXCLUDE_REGEX" --format "%w%f" "$WATCH_DIR" |
   while read -r file; do
     case "$file" in
       *.torrent)
