@@ -1,19 +1,26 @@
 # aria2-web-watch
 
-Container image for running aria2 with the AriaNg web UI served by nginx.
+Container image bundling aria2, the AriaNg single-page UI, nginx, and a watch-directory workflow that feeds new torrents to aria2 via JSON-RPC.
 
-## Building the image
+## Features
 
-```
+- Serves AriaNg through nginx and proxies JSON-RPC calls back to aria2 on port `6800`.
+- Fetches the latest AriaNg release during `docker build` (pin with `ARIANG_VERSION=<tag>`).
+- Mount-ready download directory (`/data`) and watch directory (`/watch`) whose ownership matches the requested UID/GID.
+- inotify-based watcher automatically queues `.torrent` files via `aria2p add`, renaming each to `.added` after submission.
+- Flexible environment variables let you supply custom aria2 configs, session files, directories, and runtime secrets.
+
+## Building
+
+```sh
 docker build -t aria2-web-watch .
 ```
 
-- By default the build pulls the latest AriaNg release via the GitHub API. Override with `--build-arg ARIANG_VERSION=<tag>` if y
-ou need a specific AriaNg release.
+- Pass `--build-arg ARIANG_VERSION=<tag>` to pin AriaNg to a specific release instead of `latest`.
 
 ## Running
 
-```
+```sh
 docker run -p 80:80 -p 6800:6800 \
   -e RPC_SECRET="your-secret" \
   -e PUID=1000 -e PGID=1000 \
@@ -22,16 +29,49 @@ docker run -p 80:80 -p 6800:6800 \
   aria2-web-watch
 ```
 
-- AriaNg is available at `http://localhost/`.
-- AriaNg will reach aria2 via the nginx proxy at `http://localhost/jsonrpc` (backed by aria2's JSON-RPC on port `6800`).
-- Override the AriaNg version by setting `ARIANG_VERSION` at build time.
-- Override aria2 paths via `ARIA2_CONF`, `ARIA2_TEMPLATE`, `ARIA2_SESSION`, or `DOWNLOAD_DIR` environment variables.
-- Drop `.torrent` files into `/watch` (or your overridden `WATCH_DIR`) to have them automatically queued via aria2's JSON-RPC, executed under `PUID`/`PGID`.
+- Visit `http://localhost/` for AriaNg; it connects to aria2 through nginx at `http://localhost/jsonrpc`.
+- Publishing port `6800` is optional unless you need direct RPC access from outside the container.
+- Mount `/data` to persist downloads and `/watch` for `.torrent` drops (override via `DOWNLOAD_DIR` and `WATCH_DIR`).
+- The entrypoint copies `/etc/aria2/aria2.conf.template` into `ARIA2_CONF` before appending runtime values like the RPC secret, download path, and session file.
 
-Watch directory handling and inotify-driven queuing are inspired by [mushanyoung/aria2-watching](https://github.com/mushanyoung/aria2-watching).
+### Docker Compose
 
-See the [aria2](https://github.com/aria2/aria2) project for more details on JSON-RPC options and authentication settings.
+Use `docker-compose.yml` as a starting point:
+
+```sh
+docker compose up -d
+```
+
+- Update `RPC_SECRET`, choose UID/GID values that match your host, and create the `./data` and `./watch` directories referenced by the bind mounts.
+- Uncomment `build: .` inside the YAML if you want Compose to build straight from the repo rather than pull `aria2-web-watch:latest`.
+- Bind mount your own `aria2.conf` to `/etc/aria2/aria2.conf.template` to inject additional aria2 defaults before the entrypoint appends runtime options.
+
+### Environment variables
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `RPC_SECRET` | *(empty)* | Appended to `aria2.conf` as `rpc-secret`, enabling authenticated JSON-RPC calls from AriaNg. |
+| `PUID` / `PGID` | `1000` | UID and GID assigned to the runtime user; used to chown download/watch directories when starting as root. |
+| `DOWNLOAD_DIR` | `/data` | Directory aria2 writes finished files into; bind mount for persistence. |
+| `WATCH_DIR` | `/watch` | Directory watched for `.torrent` files; new files are queued via `aria2p`. |
+| `ARIA2_CONF` | `/etc/aria2/aria2.conf` | Effective aria2 configuration file written at container start. |
+| `ARIA2_TEMPLATE` | `/etc/aria2/aria2.conf.template` | Template copied into `ARIA2_CONF` before runtime overrides. Mount your own to set defaults. |
+| `ARIA2_SESSION` | `/var/lib/aria2/aria2.session` | Session file used by aria2 to resume downloads. Mount it to persist across container restarts. |
+| `ARIANG_VERSION` (build arg) | `latest` | GitHub release tag fetched during `docker build`. |
+
+Mount or override the directories referenced above to keep state outside the container. The entrypoint creates missing directories and session files before starting services.
+
+### Watch directory workflow
+
+1. Drop a `.torrent` file into the watch directory (default `/watch`).
+2. `inotifywait` emits an event and the watcher submits the torrent via `aria2p add`.
+3. Successful submissions are renamed to `<original>.added` so you have a quick audit trail; failures are logged but left untouched.
+
+## Inspiration
+
+Watch directory handling and inotify-based queuing are inspired by [mushanyoung/aria2-watching](https://github.com/mushanyoung/aria2-watching). Consult the [aria2](https://github.com/aria2/aria2) project for advanced JSON-RPC options and authentication settings.
 
 ## Development notes
 
-- Text files are normalized to LF via `.gitattributes` to reduce merge conflicts across platforms. Ensure your Git client honors these settings when contributing changes.
+- Text files are normalized to LF via `.gitattributes`; ensure your Git tooling honors those settings to avoid cross-platform conflicts.
+- There are no automated tests—run `docker build` and `docker run` locally when changing the Dockerfile, entrypoint, or configs.

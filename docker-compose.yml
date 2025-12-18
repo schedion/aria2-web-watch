@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  aria2-web-watch:
+    image: aria2-web-watch:latest
+    # Uncomment build to build locally instead of pulling a published tag.
+    # build: .
+    container_name: aria2-web-watch
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "6800:6800"
+    environment:
+      RPC_SECRET: "changeme"
+      PUID: "1000"
+      PGID: "1000"
+      # DOWNLOAD_DIR: "/data"
+      # WATCH_DIR: "/watch"
+      # ARIA2_TEMPLATE: "/etc/aria2/aria2.conf.template"
+    volumes:
+      - ./data:/data
+      - ./watch:/watch
+      - ./aria2.conf:/etc/aria2/aria2.conf.template:ro
