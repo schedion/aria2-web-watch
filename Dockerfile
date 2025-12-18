@@ -1,4 +1,4 @@
-FROM dhi.io/nginx:stable-alpine
+FROM dhi.io/nginx:1.28-alpine3.21
 
 # Packages (nginx provided by base image)
 RUN apk add --no-cache \
