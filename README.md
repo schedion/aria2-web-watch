@@ -31,3 +31,7 @@ docker run -p 80:80 -p 6800:6800 \
 Watch directory handling and inotify-driven queuing are inspired by [mushanyoung/aria2-watching](https://github.com/mushanyoung/aria2-watching).
 
 See the [aria2](https://github.com/aria2/aria2) project for more details on JSON-RPC options and authentication settings.
+
+## Development notes
+
+- Text files are normalized to LF via `.gitattributes` to reduce merge conflicts across platforms. Ensure your Git client honors these settings when contributing changes.
