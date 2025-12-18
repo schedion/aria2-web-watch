@@ -209,19 +209,19 @@ s6-setuidgid "$USER_NAME" aria2c \
   >/proc/1/fd/1 2>&1 &
 
 # Start watcher to add new .torrent files placed in WATCH_DIR via aria2 RPC
-s6-setuidgid "$USER_NAME" sh -c '
-  inotifywait -m -e create -e moved_to --exclude "$WATCH_EXCLUDE_REGEX" --format "%w%f" "$WATCH_DIR" |
+s6-setuidgid "$USER_NAME" sh -c "
+  inotifywait -m -e create -e moved_to --exclude \"$WATCH_EXCLUDE_REGEX\" --format '%w%f' \"$WATCH_DIR\" |
   while read -r file; do
-    case "$file" in
+    case \"\$file\" in
       *.torrent)
-        echo "[watch] detected torrent: $file"
-        aria2p -s "$RPC_SECRET" add "$file" && mv "$file" "$file.added" || echo "[watch] failed to queue $file"
+        echo \"[watch] detected torrent: \$file\"
+        aria2p -s \"$RPC_SECRET\" add \"\$file\" && mv \"\$file\" \"\$file.added\" || echo \"[watch] failed to queue \$file\"
         ;;
       *)
         ;;
     esac
   done
-' &
+" &
 
 # Start nginx in foreground (container stays up)
 echo "[nginx] starting"
