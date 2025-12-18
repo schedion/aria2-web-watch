@@ -82,13 +82,28 @@
     ensureValue('protocol', protocol);
     ensureValue('httpMethod', config.httpMethod || 'POST');
 
-    var secret = config.rpcSecret || '';
+    var secret = config.rpcSecretB64 || '';
+    if (!secret && config.rpcSecret) {
+      try {
+        secret = window.btoa(config.rpcSecret);
+      } catch (e) {
+        console.warn('[aria2-web-watch] failed to encode rpc secret', e);
+      }
+    }
     if (secret) {
       var encodedSecret = secret;
-      var base64Pattern = /^[A-Za-z0-9+/]+={0,2}$/;
-      if (!(secret.length % 4 === 0 && base64Pattern.test(secret))) {
+      var isBase64 = function (value) {
+        try {
+          return window.btoa(window.atob(value)) === value;
+        } catch (e) {
+          return false;
+        }
+      };
+
+      if (!isBase64(secret)) {
         encodedSecret = window.btoa(secret);
       }
+
       ensureValue('secret', encodedSecret);
     }
 

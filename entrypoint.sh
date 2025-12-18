@@ -1,6 +1,7 @@
 #!/bin/sh
 set -e
 
+RPC_SECRET="${RPC_SECRET:-}"
 ARIA2_CONF="${ARIA2_CONF:-/etc/aria2/aria2.conf}"
 ARIA2_TEMPLATE="${ARIA2_TEMPLATE:-/etc/aria2/aria2.conf.template}"
 ARIA2_SESSION="${ARIA2_SESSION:-/var/lib/aria2/aria2.session}"
@@ -26,6 +27,9 @@ if [ -z "$RPC_SECRET" ]; then
   export RPC_SECRET
   echo "[entrypoint] Generated random RPC_SECRET: $RPC_SECRET"
 fi
+
+RPC_SECRET_B64="$(printf '%s' "$RPC_SECRET" | base64 | tr -d '\n')"
+export RPC_SECRET_B64
 
 if [ -z "$WEBUI_PASSWORD" ]; then
   WEBUI_PASSWORD="$(generate_secret)"
@@ -98,6 +102,7 @@ start_tag = "<!-- aria2-web-watch:autoconfig -->"
 end_tag = "<!-- /aria2-web-watch:autoconfig -->"
 config = {
     "rpcSecret": os.environ.get("RPC_SECRET", ""),
+    "rpcSecretB64": os.environ.get("RPC_SECRET_B64", ""),
     "rpcInterface": "jsonrpc",
     "rpcPath": "/jsonrpc",
 }
