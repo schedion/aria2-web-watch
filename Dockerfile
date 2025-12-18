@@ -1,16 +1,4 @@
-ARG ALPINE_VERSION=3.21
-FROM alpine:${ALPINE_VERSION} AS apk-tools
-
-# Keep apk tooling handy for hardened base images that remove the package manager.
-RUN apk upgrade --no-cache
-
-FROM dhi.io/nginx:1.28-alpine3.21
-
-# Bring apk tooling from the helper stage because the hardened base does not
-# include it, but still uses Alpine under the hood.
-COPY --from=apk-tools /sbin/apk /sbin/apk
-COPY --from=apk-tools /lib/apk /lib/apk
-COPY --from=apk-tools /etc/apk /etc/apk
+FROM nginx:stable-alpine
 
 # Packages (nginx provided by base image)
 RUN apk add --no-cache \
