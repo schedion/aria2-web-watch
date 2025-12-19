@@ -39,12 +39,12 @@
       }
     };
     var locationObject = window.location || document.location || {};
-    var protocol = config.protocol || (locationObject.protocol === 'https:' ? 'https' : 'http');
+    var baseProtocol = (locationObject.protocol === 'https:' ? 'https' : 'http');
     var host = config.rpcHost || locationObject.hostname || 'localhost';
     var port = config.rpcPort || locationObject.port;
 
     if (!port || port.length === 0) {
-      port = protocol === 'https' ? '443' : '80';
+      port = baseProtocol === 'https' ? '443' : '80';
     }
 
     ensureDefault('language', 'en');
@@ -79,8 +79,8 @@
     ensureValue('rpcHost', host);
     ensureValue('rpcPort', port);
     ensureValue('rpcInterface', config.rpcInterface || 'jsonrpc');
-    var wsProtocol = (protocol === 'https') ? 'wss' : 'ws';
-    ensureValue('protocol', protocol);
+    var wsProtocol = (baseProtocol === 'https' ? 'wss' : 'ws');
+    ensureValue('protocol', wsProtocol);
     ensureValue('httpMethod', 'POST');
     ensureValue('rpcProtocol', wsProtocol);
     ensureValue('rpcUseWebSocket', true);

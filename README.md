@@ -11,6 +11,7 @@ Container image bundling aria2, the AriaNg single-page UI, nginx, and a watch-di
 - Flexible environment variables let you supply custom aria2 configs, session files, directories, and runtime secrets.
 - HTTP Basic Auth guards the AriaNg UI (default user `aria2` with a generated password persisted under `/config`), while `/jsonrpc` stays exposed only via the shared secret for AriaNg and other clients.
 - Secrets (RPC token + Basic Auth password) persist under `/config` so restarts reuse credentials unless you explicitly force regeneration.
+- Ships the `mkbrr` CLI (from [autobrr/mkbrr](https://github.com/autobrr/mkbrr)) via Alpine’s `edge/testing` repository so you can craft torrents directly inside the container.
 
 ## Building
 
@@ -142,3 +143,12 @@ Watch directory handling and inotify-based queuing are inspired by [mushanyoung/
 
 - Text files are normalized to LF via `.gitattributes`; ensure your Git tooling honors those settings to avoid cross-platform conflicts.
 - There are no automated tests—run `docker build` and `docker run` locally when changing the Dockerfile, entrypoint, or configs.
+### mkbrr CLI
+
+The container installs [`mkbrr`](https://mkbrr.com/introduction) from Alpine’s testing repository under `/usr/local/bin/mkbrr`. Run it via `docker exec` whenever you need to create or inspect torrents, for example:
+
+```sh
+docker exec -it aria2-web-watch mkbrr create --path /data/myfile.iso
+```
+
+Whenever Alpine updates `mkbrr` you’ll pick up the new version on the next image rebuild; no extra build arguments required.

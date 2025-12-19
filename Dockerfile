@@ -1,18 +1,21 @@
 FROM nginx:stable-alpine
 
 # Packages (nginx provided by base image)
-RUN apk add --no-cache \
-    aria2 \
-    inotify-tools \
-    curl \
-    jq \
-    unzip \
-    ca-certificates \
-    tzdata \
-    s6 \
-    python3 \
-    py3-pip \
-    apache2-utils
+RUN set -eux; \
+    echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories; \
+    apk add --no-cache \
+        aria2 \
+        inotify-tools \
+        curl \
+        jq \
+        unzip \
+        ca-certificates \
+        tzdata \
+        s6 \
+        python3 \
+        py3-pip \
+        apache2-utils \
+        mkbrr
 
 # Install aria2p inside a dedicated virtual environment to avoid conflicts with
 # the system-managed Python installation on Alpine.
@@ -35,16 +38,19 @@ RUN set -eux; \
     unzip /tmp/ariang.zip -d /usr/share/nginx/html; \
     rm /tmp/ariang.zip
 
+# Install mkbrr CLI (used for torrent creation/management)
+ARG MKBRR_VERSION=latest
+RUN set -eux; \
+    VERSION="${MKBRR_VERSION}"; \
+    if [ "${VERSION}" = "latest" ]; then \
+      VERSION=$(curl -fsSL https://api.github.com/repos/autobrr/mkbrr/releases/latest | jq -r .tag_name); \
+    fi; \
+    CLEAN_VERSION="${VERSION#v}"; \
+    ARCHIVE="mkbrr_${CLEAN_VERSION}_linux_x86_64.tar.gz"; \
+    curl -fsSL "https://github.com/autobrr/mkbrr/releases/download/${VERSION}/${ARCHIVE}" -o /tmp/mkbrr.tar.gz; \
+    tar -xzf /tmp/mkbrr.tar.gz -C /tmp mkbrr; \
+    install /tmp/mkbrr /usr/local/bin/mkbrr; \
+    rm -f /tmp/mkbrr.tar.gz /tmp/mkbrr
+
 # Provide auto-configuration helper for AriaNg
-COPY ariang-autoconfig.js /usr/share/nginx/html/ariang-autoconfig.js
-
-# Copy configuration
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY aria2.conf /etc/aria2/aria2.conf.template
-COPY entrypoint.sh /entrypoint.sh
-
-RUN chmod +x /entrypoint.sh
-
-EXPOSE 80 6800
-
-ENTRYPOINT ["/entrypoint.sh"]
+COPY ariang-autoconfig.js /usr分享…***
