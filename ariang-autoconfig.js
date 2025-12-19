@@ -79,8 +79,11 @@
     ensureValue('rpcHost', host);
     ensureValue('rpcPort', port);
     ensureValue('rpcInterface', config.rpcInterface || 'jsonrpc');
+    var wsProtocol = (protocol === 'https') ? 'wss' : 'ws';
     ensureValue('protocol', protocol);
-    ensureValue('httpMethod', config.httpMethod || 'POST');
+    ensureValue('httpMethod', 'POST');
+    ensureValue('rpcProtocol', wsProtocol);
+    ensureValue('rpcUseWebSocket', true);
 
     var secret = config.rpcSecretB64 || '';
     if (!secret && config.rpcSecret) {

@@ -11,6 +11,7 @@ PUID="${PUID:-1000}"
 PGID="${PGID:-1000}"
 ENABLE_RPC_PROXY="${ENABLE_RPC_PROXY:-true}"
 NGINX_JSONRPC_SNIPPET="${NGINX_JSONRPC_SNIPPET:-/etc/nginx/snippets/jsonrpc.conf}"
+NGINX_HEALTH_SNIPPET="${NGINX_HEALTH_SNIPPET:-/etc/nginx/snippets/health.conf}"
 ENABLE_ARIANG_AUTOCONFIG="${ENABLE_ARIANG_AUTOCONFIG:-true}"
 ARIANG_INDEX_HTML="${ARIANG_INDEX_HTML:-/usr/share/nginx/html/index.html}"
 WEBUI_USER="${WEBUI_USER:-aria2}"
@@ -26,7 +27,7 @@ FORCE_RANDOM_RPC_SECRET="${FORCE_RANDOM_RPC_SECRET:-false}"
 FORCE_RANDOM_WEBUI_PASSWORD="${FORCE_RANDOM_WEBUI_PASSWORD:-false}"
 WATCH_EXCLUDE_REGEX="${WATCH_EXCLUDE_REGEX:-(^|/)\\.}"
 SKIP_DIR_OWNERSHIP="${SKIP_DIR_OWNERSHIP:-true}"
-export ARIA2_CONF ARIA2_TEMPLATE ARIA2_SESSION DOWNLOAD_DIR WATCH_DIR RPC_SECRET PUID PGID ENABLE_RPC_PROXY NGINX_JSONRPC_SNIPPET ENABLE_ARIANG_AUTOCONFIG ARIANG_INDEX_HTML WEBUI_USER WEBUI_PASSWORD WEBUI_HTPASSWD BT_LISTEN_PORT PEER_ID_PREFIX ARIA2_LOG_LEVEL SECRETS_DIR RPC_SECRET_FILE WEBUI_PASSWORD_FILE FORCE_RANDOM_RPC_SECRET FORCE_RANDOM_WEBUI_PASSWORD
+export ARIA2_CONF ARIA2_TEMPLATE ARIA2_SESSION DOWNLOAD_DIR WATCH_DIR RPC_SECRET PUID PGID ENABLE_RPC_PROXY NGINX_JSONRPC_SNIPPET NGINX_HEALTH_SNIPPET ENABLE_ARIANG_AUTOCONFIG ARIANG_INDEX_HTML WEBUI_USER WEBUI_PASSWORD WEBUI_HTPASSWD BT_LISTEN_PORT PEER_ID_PREFIX ARIA2_LOG_LEVEL SECRETS_DIR RPC_SECRET_FILE WEBUI_PASSWORD_FILE FORCE_RANDOM_RPC_SECRET FORCE_RANDOM_WEBUI_PASSWORD
 
 generate_secret() {
   tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32
@@ -80,7 +81,7 @@ else
   echo "[entrypoint] Generated WEBUI password for $WEBUI_USER and stored at $WEBUI_PASSWORD_FILE"
 fi
 
-mkdir -p "$(dirname "$ARIA2_CONF")" "$(dirname "$ARIA2_TEMPLATE")" "$(dirname "$ARIA2_SESSION")" "$DOWNLOAD_DIR" "$WATCH_DIR" /run/nginx "$(dirname "$NGINX_JSONRPC_SNIPPET")" "$(dirname "$WEBUI_HTPASSWD")"
+mkdir -p "$(dirname "$ARIA2_CONF")" "$(dirname "$ARIA2_TEMPLATE")" "$(dirname "$ARIA2_SESSION")" "$DOWNLOAD_DIR" "$WATCH_DIR" /run/nginx "$(dirname "$NGINX_JSONRPC_SNIPPET")" "$(dirname "$NGINX_HEALTH_SNIPPET")" "$(dirname "$WEBUI_HTPASSWD")"
 touch "$ARIA2_SESSION"
 htpasswd -bB -c "$WEBUI_HTPASSWD" "$WEBUI_USER" "$WEBUI_PASSWORD"
 
@@ -143,6 +144,22 @@ EOF
 else
   echo "# JSON-RPC proxy disabled" > "$NGINX_JSONRPC_SNIPPET"
 fi
+
+# Configure readiness endpoint (performs local JSON-RPC call)
+cat > "$NGINX_HEALTH_SNIPPET" <<EOF
+location = /healthz {
+  access_log off;
+  proxy_pass http://127.0.0.1:6800/jsonrpc?method=aria2.getVersion&jsonrpc=2.0&id=healthz&params=%5B%22token:${RPC_SECRET}%22%5D;
+  proxy_set_header Content-Type application/json;
+  proxy_intercept_errors on;
+  error_page 502 503 = @healthfallback;
+}
+
+location @healthfallback {
+  default_type application/json;
+  return 503 '{"status":"unhealthy"}';
+}
+EOF
 
 # Seed AriaNg localStorage defaults if requested so the UI auto-connects.
 if [ "$ENABLE_ARIANG_AUTOCONFIG" = "true" ] || [ "$ENABLE_ARIANG_AUTOCONFIG" = "1" ]; then

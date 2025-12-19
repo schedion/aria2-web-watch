@@ -42,6 +42,7 @@ docker run -p 80:80 -p 6800:6800 \
 - Capture the generated credentials from container logs (`docker logs <container>`) if you rely on the defaults; otherwise, set explicit `RPC_SECRET` and `WEBUI_PASSWORD` values for deterministic deployments.
 - Customize BitTorrent behavior via `BT_LISTEN_PORT` (default `6881`) and `PEER_ID_PREFIX` (default `A2`), and adjust log verbosity with `ARIA2_LOG_LEVEL`. aria2 logs stream to Docker logs because the process writes directly to stdout.
 - Hidden files and directories inside `/watch` are ignored by default (`WATCH_EXCLUDE_REGEX`), avoiding Syncthing metadata and similar helper folders.
+- `/healthz` issues a loopback JSON-RPC call (`aria2.getVersion`) to verify nginx, aria2, and the secret are all working before returning `{"status":"ok"}`—ideal for Docker/K8s readiness checks.
 - Mount `/config` (or override `SECRETS_DIR`) if you want those credentials to persist outside the container filesystem.
 
 ### Docker Compose
@@ -77,6 +78,11 @@ services:
     volumes:
       - aria2-config:/config
       # - ./aria2.conf:/config/aria2.conf.template:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 volumes:
   aria2-config:

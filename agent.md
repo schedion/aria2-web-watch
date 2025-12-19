@@ -37,6 +37,7 @@ The image fetches the latest AriaNg release by default. Pass `--build-arg ARIANG
 - BitTorrent controls: `BT_LISTEN_PORT` (default `6881`) and `PEER_ID_PREFIX` (default `A2`) are appended to `aria2.conf`. Adjust `ARIA2_LOG_LEVEL` if you need more/less verbosity from aria2’s stdout logs.
 - Watch behavior: hidden files/directories inside `/watch` are excluded by default via `WATCH_EXCLUDE_REGEX` (`(^|/)\.`). Override if you need different filtering.
 - Ownership adjustments: by default (`SKIP_DIR_OWNERSHIP=true`) the entrypoint leaves `/data`, `/watch`, and session dirs alone. Set `SKIP_DIR_OWNERSHIP=false` if you mount host paths and need them chowned to `PUID:PGID`.
+- Readiness endpoint: `/healthz` performs a local `aria2.getVersion` JSON-RPC call via nginx. Docker Compose ships with a curl-based healthcheck hitting that endpoint; reuse it for orchestration.
 
 ## Testing expectations
 
